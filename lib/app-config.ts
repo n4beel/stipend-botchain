@@ -22,5 +22,5 @@ export const app = {
    * The single transaction this app exists to make, in the user's words. Shown in the empty state
    * and reused verbatim in the listing submission, so the app and the form cannot disagree.
    */
-  theTx: "Do the thing",
+  theTx: "Draw from your allowance",
 } as const;
