@@ -7,171 +7,122 @@ import NetworkBadge from "@/components/botchain/NetworkBadge";
 import BuiltOnBotChain from "@/components/botchain/BuiltOnBotChain";
 import { app } from "@/lib/app-config";
 
-export type NavItem = { href: string; label: string };
+export interface NavRoute {
+  path: string;
+  title: string;
+}
 
-interface PageShellProps {
+export interface PageShellProps {
   children: React.ReactNode;
-  nav?: NavItem[];
+  navItems?: NavRoute[];
   title?: string;
   description?: string;
 }
 
-/**
- * App frame.
- *
- * A top bar rather than ghost-pay's 220px rail. These apps have two or three screens, and a rail
- * that wide spends a fifth of a laptop window — and all of a phone — on three links. The bar is
- * the same at every width, which also means there is no drawer, no focus trap and no hamburger to
- * get wrong.
- *
- * Height is `100dvh` rather than `100vh`. On mobile Safari and Chrome, `100vh` is the viewport
- * with the browser chrome *retracted*, so a `h-screen` layout with `overflow-hidden` pushes its
- * own footer under the address bar and the user cannot scroll to it.
- */
-export default function PageShell({ children, nav = [], title, description }: PageShellProps) {
-  return (
-    <div
-      className="flex flex-col overflow-x-hidden"
-      style={{ minHeight: "100dvh", background: "var(--bg-base)" }}
-    >
-      <header
-        className="sticky top-0 z-30 flex-shrink-0"
-        style={{
-          borderBottom: "1px solid var(--border-subtle)",
-          background: "var(--bg-surface)",
-        }}
-      >
-        <div className="mx-auto w-full max-w-[880px] px-4 md:px-6">
-          <div className="flex items-center gap-3 py-2.5">
-            <Link href="/" className="flex items-center gap-2 flex-shrink-0 no-underline">
-              <span
-                className="w-2 h-2 flex-shrink-0"
-                style={{ background: "var(--accent)" }}
-                aria-hidden="true"
-              />
-              <span
-                className="text-[14px] font-semibold tracking-[-0.01em]"
-                style={{ color: "var(--text-primary)" }}
-              >
-                {app.name}
-              </span>
-            </Link>
+const DEFAULT_ROUTES: NavRoute[] = [
+  { path: "/", title: "My Allowances" },
+  { path: "/new", title: "+ Create Pot" },
+];
 
-            <div className="flex-1" />
+/**
+ * Archetype S · Gauge Canvas Shell.
+ *
+ * Plum base (#3B1646) and mint accents (#7DF0C0).
+ * Features an organic household header with droplet wordmark and calm status rhythm.
+ */
+export default function PageShell({
+  children,
+  navItems = DEFAULT_ROUTES,
+  title,
+  description,
+}: PageShellProps) {
+  const currentPath = usePathname();
+
+  return (
+    <div className="gauge-canvas flex min-h-screen flex-col text-[#F6E9FA]">
+      {/* Top Bar Anchor */}
+      <header className="border-b border-[#62306F]/70 bg-[#4A1D58]/40 backdrop-blur-md">
+        <div className="mx-auto flex max-w-5xl flex-wrap items-center justify-between gap-4 px-4 py-3.5 sm:px-6">
+          {/* Logo & Headline */}
+          <div className="flex items-center gap-3">
+            <Link href="/" className="flex items-center gap-2.5 no-underline">
+              <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-[#62306F]/50 ring-1 ring-[#7DF0C0]/40">
+                <span className="h-3 w-3 rounded-full bg-[#7DF0C0] shadow-[0_0_10px_#7DF0C0]" />
+              </div>
+              <div className="flex flex-col">
+                <span className="text-base font-extrabold tracking-tight text-[#F6E9FA]">
+                  {app.name}
+                </span>
+                <span className="text-[11px] text-[#C9A8D6] hidden sm:block">
+                  Refilling Spending Pots
+                </span>
+              </div>
+            </Link>
+          </div>
+
+          {/* Navigation Controls */}
+          <div className="flex items-center gap-3">
+            <nav className="flex items-center rounded-xl bg-[#2D0D36]/80 p-1 border border-[#62306F]/60">
+              {navItems.map((item) => {
+                const isCurrent = currentPath === item.path;
+                return (
+                  <Link
+                    key={item.path}
+                    href={item.path}
+                    className={`rounded-lg px-3 py-1.5 text-xs font-semibold no-underline transition-all ${
+                      isCurrent
+                        ? "bg-[#62306F] text-[#7DF0C0] shadow-sm"
+                        : "text-[#C9A8D6] hover:text-[#F6E9FA]"
+                    }`}
+                  >
+                    {item.title}
+                  </Link>
+                );
+              })}
+            </nav>
+
             <NetworkBadge />
-            <div className="w-[150px] md:w-[180px] flex-shrink-0">
+
+            <div className="w-36 shrink-0 sm:w-40">
               <ConnectButton />
             </div>
           </div>
-
-          {nav.length > 0 && <Nav items={nav} />}
         </div>
-      </header>
 
-      <main className="flex-1 mx-auto w-full max-w-[880px] px-4 py-6 md:px-6 md:py-8">
+        {/* Page Context Headline */}
         {(title || description) && (
-          <div className="mb-6">
+          <div className="mx-auto max-w-5xl px-4 pt-5 pb-3 sm:px-6">
             {title && (
-              <h1
-                className="text-[20px] md:text-[24px] font-semibold tracking-[-0.015em]"
-                style={{ color: "var(--text-primary)" }}
-              >
+              <h1 className="text-2xl font-bold tracking-tight text-[#F6E9FA] sm:text-3xl">
                 {title}
               </h1>
             )}
             {description && (
-              <p
-                className="mt-1.5 text-[13px] leading-relaxed"
-                style={{ color: "var(--text-secondary)" }}
-              >
+              <p className="mt-1 max-w-2xl text-xs sm:text-sm text-[#C9A8D6] leading-relaxed">
                 {description}
               </p>
             )}
           </div>
         )}
+      </header>
+
+      {/* Main Flow Container */}
+      <main className="mx-auto flex w-full max-w-5xl flex-1 flex-col justify-center px-4 py-8 sm:px-6">
         {children}
       </main>
 
-      {/*
-        The ecosystem footer is required, not decorative. BOT Chain's project assessment criteria
-        ask that the footer or an ecosystem-partnership section carry the BOT Chain name and link
-        to both botchain.ai and the explorer; a site without it is not counted, however complete
-        the product is. It lives in the shared shell so no project can ship missing it.
-      */}
-      <footer
-        className="flex-shrink-0 mx-auto w-full max-w-[880px] px-4 py-6 md:px-6"
-        style={{ borderTop: "1px solid var(--border-subtle)" }}
-      >
-        <div className="flex flex-col gap-3">
-          <p className="text-[11px]" style={{ color: "var(--text-tertiary)" }}>
-            {app.tagline}
-          </p>
-
-          <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
-            <span className="inline-flex items-center gap-2">
-              <span
-                aria-hidden="true"
-                className="inline-block w-2 h-2 flex-shrink-0"
-                style={{ background: "var(--accent)", borderRadius: "1px" }}
-              />
-              <BuiltOnBotChain
-                className="text-[11px] uppercase tracking-[0.06em]"
-                style={{ color: "var(--text-secondary)" }}
-              />
+      {/* Footnote Bar */}
+      <footer className="border-t border-[#62306F]/50 bg-[#2D0D36]/30 py-4 text-xs text-[#C9A8D6]">
+        <div className="mx-auto flex max-w-5xl flex-col items-center justify-between gap-3 px-4 sm:flex-row sm:px-6">
+          <div className="flex items-center gap-2 text-center sm:text-left">
+            <span className="h-1.5 w-1.5 rounded-full bg-[#7DF0C0]" />
+            <span>
+              The guardian can close a stipend at any moment. Unused allowance does not roll over.
             </span>
-
-            <a
-              href="https://botchain.ai"
-              target="_blank"
-              rel="noreferrer"
-              className="text-[11px] underline"
-              style={{ color: "var(--text-tertiary)" }}
-            >
-              botchain.ai
-            </a>
-
-            <a
-              href="https://scan.botchain.ai"
-              target="_blank"
-              rel="noreferrer"
-              className="text-[11px] underline"
-              style={{ color: "var(--text-tertiary)" }}
-            >
-              BOT Chain Explorer
-            </a>
           </div>
+          <BuiltOnBotChain />
         </div>
       </footer>
     </div>
-  );
-}
-
-/**
- * Horizontal tabs. `aria-current` rather than colour alone marks the active one, and the active
- * check is an exact match so `/` does not light up on every page.
- */
-function Nav({ items }: { items: NavItem[] }) {
-  const pathname = usePathname();
-
-  return (
-    <nav className="flex items-center gap-1 -mb-px overflow-x-auto">
-      {items.map((item) => {
-        const active = pathname === item.href;
-        return (
-          <Link
-            key={item.href}
-            href={item.href}
-            aria-current={active ? "page" : undefined}
-            className="nav-link flex items-center px-3 py-2 text-[12px] uppercase tracking-[0.04em] no-underline whitespace-nowrap"
-            style={{
-              color: active ? "var(--accent)" : "var(--text-secondary)",
-              borderBottom: `1px solid ${active ? "var(--accent)" : "transparent"}`,
-            }}
-          >
-            {item.label}
-          </Link>
-        );
-      })}
-    </nav>
   );
 }
