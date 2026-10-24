@@ -1,0 +1,153 @@
+@import "tailwindcss";
+
+@source "../app/**/*.{ts,tsx}";
+@source "../components/**/*.{ts,tsx}";
+@source "../lib/**/*.{ts,tsx}";
+
+@theme {
+  --font-sans: var(--font-geist-sans), system-ui, sans-serif;
+  --font-mono: var(--font-geist-mono), ui-monospace, monospace;
+
+  --radius: 2px;
+  --radius-sm: 2px;
+  --radius-md: 4px;
+}
+
+/**
+ * Design tokens.
+ *
+ * Every component reads these through `var(--token)` rather than a Tailwind colour class, which is
+ * what lets a project change its whole palette from `lib/app-config.ts`: the root layout writes
+ * `--accent` inline, overriding the default below. Nothing else needs editing per project.
+ */
+:root {
+  --bg-base: #0A0A0A;
+  --bg-surface: #111111;
+  --bg-elevated: #181818;
+  --bg-overlay: #1F1F1F;
+  --border-subtle: #1E1E1E;
+  --border-default: #2A2A2A;
+  --border-strong: #383838;
+  --text-primary: #EBEBEB;
+  --text-secondary: #888888;
+  --text-tertiary: #555555;
+  --accent: #00E5CC;
+  --success: #1DB954;
+  --warning: #F5A623;
+  --danger: #E53E3E;
+}
+
+@layer base {
+  * {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+  }
+
+  html {
+    height: 100%;
+  }
+
+  body {
+    background: var(--bg-base);
+    color: var(--text-primary);
+    font-family: var(--font-sans);
+    min-height: 100%;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  a {
+    color: inherit;
+  }
+}
+
+/* Touch targets
+ *
+ * The interface is deliberately dense, and at 26px tall a `size="sm"` button is comfortable with a
+ * mouse and a coin-flip with a thumb. `pointer: coarse` matches touch input rather than screen
+ * width, so this raises the hit area exactly where it is needed and leaves mouse density
+ * untouched, including on a small laptop window.
+ *
+ * 44px is Apple's minimum; Android asks for 48dp. Padding rather than height, so a control that is
+ * already large enough is not stretched.
+ */
+@media (pointer: coarse) {
+  button,
+  [role="button"],
+  a.nav-link,
+  select,
+  label[for] {
+    min-height: 44px;
+  }
+
+  input,
+  textarea {
+    /* Anything under 16px makes iOS Safari zoom the page on focus, and it does not zoom back. */
+    font-size: 16px;
+  }
+}
+
+/* Nothing should be able to scroll the page sideways. A single overflowing address or hash
+ * otherwise shifts the whole layout and there is no obvious culprit. */
+html,
+body {
+  overflow-x: hidden;
+}
+
+::selection {
+  background: color-mix(in srgb, var(--accent) 18%, transparent);
+  color: var(--accent);
+}
+
+::-webkit-scrollbar {
+  width: 4px;
+  height: 4px;
+}
+::-webkit-scrollbar-track {
+  background: var(--bg-base);
+}
+::-webkit-scrollbar-thumb {
+  background: var(--border-strong);
+  border-radius: 2px;
+}
+
+.mono {
+  font-family: var(--font-mono);
+  letter-spacing: 0;
+}
+
+/* Toast entry. Radix drives the data-state; without the keyframes the toast simply appears. */
+@keyframes slideIn {
+  from { transform: translateX(8px); opacity: 0; }
+  to   { transform: translateX(0);   opacity: 1; }
+}
+@keyframes swipeOut {
+  to { transform: translateX(100%); opacity: 0; }
+}
+
+@keyframes shimmer {
+  0%   { background-position: -400px 0; }
+  100% { background-position: 400px 0; }
+}
+.skeleton {
+  background: linear-gradient(
+    90deg,
+    var(--bg-surface) 25%,
+    var(--bg-elevated) 50%,
+    var(--bg-surface) 75%
+  );
+  background-size: 800px 100%;
+  animation: shimmer 1.6s ease-in-out infinite;
+  border-radius: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}

@@ -1,0 +1,60 @@
+# Netlify build configuration.
+#
+# The Next.js runtime (@netlify/plugin-nextjs) is installed and updated by Netlify automatically.
+# It is deliberately NOT pinned here or in package.json: Netlify ships a new runtime with each
+# build image, and pinning it is how a project ends up on a runtime older than its Next version.
+#
+# Note there is no `/* -> /index.html 200` catch-all anywhere in this project, and there must not
+# be one. A user redirect beats the adapter's own routes, so a leftover SPA catch-all silently
+# serves static HTML for /record/<digest> — which is the one route here that must reach the server.
+
+[build]
+  command = "npm run build"
+  publish = ".next"
+
+# Declared rather than left to auto-detection.
+#
+# Netlify auto-installs this runtime for Git-linked projects, but an API/zip deploy detected the
+# framework as "next" and still ran no plugins: the build published .next as a folder of static
+# files, so every route 404'd and not one function was created. Declaring the package makes the
+# runtime run on any deploy path.
+#
+# No version. Netlify ships a new runtime with each build image, and pinning it here is how a
+# project ends up on a runtime older than its Next version.
+[[plugins]]
+  package = "@netlify/plugin-nextjs"
+
+[build.environment]
+  # Pinned because the build image's default moves, and a Node bump is not something to discover
+  # from a red build on the day of a listing submission. Next 16 needs 20.9+.
+  NODE_VERSION = "22"
+
+  # The deployment, in version control rather than in a dashboard.
+  #
+  # Every value here is public by construction — contract addresses and block numbers anyone can
+  # read off the explorer — so the usual reason to keep deploy config out of a repo does not
+  # apply. Keeping it here means a rebuild cannot silently pick up different values than a
+  # reviewer sees in the repo, and that fifteen projects are configured by fifteen commits
+  # rather than fifteen rounds of clicking.
+  #
+  # NEXT_PUBLIC_* is inlined into the browser bundle at build time, which is exactly why no
+  # secret may ever be given one of these names. Nothing in these apps needs one.
+  #
+  # Fill in from the output of contracts/script/Deploy.s.sol.
+  NEXT_PUBLIC_BOTCHAIN_NETWORK = "mainnet"
+  NEXT_PUBLIC_CONTRACT_677 = ""
+  NEXT_PUBLIC_DEPLOY_BLOCK_677 = ""
+  NEXT_PUBLIC_CONTRACT_968 = ""
+  NEXT_PUBLIC_DEPLOY_BLOCK_968 = ""
+
+[[headers]]
+  for = "/*"
+  [headers.values]
+    # The app hashes files in the browser via crypto.subtle, which exists only in a secure
+    # context. HSTS keeps a recipient who types http:// from landing on a version where hashing
+    # is silently unavailable.
+    Strict-Transport-Security = "max-age=31536000; includeSubDomains"
+    X-Content-Type-Options = "nosniff"
+    Referrer-Policy = "strict-origin-when-cross-origin"
+    # No file ever leaves the browser, and nothing here is embeddable.
+    X-Frame-Options = "DENY"
