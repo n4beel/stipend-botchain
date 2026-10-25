@@ -6,7 +6,7 @@ import { useRouter } from "next/navigation";
 import {
   type Address,
   type Hex,
-  decodeEventLog,
+  parseEventLogs,
   isAddress,
   parseEther,
   zeroAddress,
@@ -135,25 +135,13 @@ export default function CreateAllowanceForm() {
       setStage("confirmed");
 
       // Extract created ID from logs
-      let foundId: bigint | null = null;
-      for (const log of receipt.logs) {
-        try {
-          const decoded = decodeEventLog({
-            abi: stipendAbi,
-            data: log.data,
-            topics: log.topics,
-          });
-          if (decoded.eventName === "Created") {
-            foundId = (decoded.args as { id: bigint }).id;
-            break;
-          }
-        } catch {
-          // not our event
-        }
-      }
-
-      if (foundId) {
-        setCreatedId(foundId);
+      const createdLogs = parseEventLogs({
+        abi: stipendAbi,
+        logs: receipt.logs,
+        eventName: "Created",
+      });
+      if (createdLogs.length > 0 && createdLogs[0].args.id) {
+        setCreatedId(createdLogs[0].args.id);
       }
     } else if (receiptError) {
       settledHashRef.current = txHash;

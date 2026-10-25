@@ -123,13 +123,14 @@ contract Stipend {
     error OverAllowance(uint256 available, uint256 requested);
     error InsufficientBalance(uint256 balance, uint256 requested);
     error TransferFailed();
+    error Reentrancy();
 
     // -------------------------------------------------------------------------
     // Modifiers
     // -------------------------------------------------------------------------
 
     modifier nonReentrant() {
-        require(_lock == 1, "REENTRANT");
+        if (_lock != 1) revert Reentrancy();
         _lock = 2;
         _;
         _lock = 1;

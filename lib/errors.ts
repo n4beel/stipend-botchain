@@ -127,6 +127,9 @@ export function describeError(err: unknown): string {
       case "TransferFailed": {
         return "Transfer failed.";
       }
+      case "Reentrancy": {
+        return "Reentrant call detected.";
+      }
       default:
         return `Contract error: ${revert.errorName}`;
     }

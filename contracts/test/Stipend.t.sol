@@ -52,6 +52,29 @@ contract ReentrantGuardian {
     }
 }
 
+contract ExplicitReentrantAttacker {
+    Stipend public stipend;
+    uint256 public allowanceId;
+    bytes public capturedRevert;
+
+    constructor(address stipendAddress) {
+        stipend = Stipend(stipendAddress);
+    }
+
+    function setTarget(uint256 id) external {
+        allowanceId = id;
+    }
+
+    receive() external payable {
+        (bool ok, bytes memory data) = address(stipend).call(
+            abi.encodeWithSelector(Stipend.draw.selector, allowanceId, 0.01 ether)
+        );
+        if (!ok) {
+            capturedRevert = data;
+        }
+    }
+}
+
 contract StipendTest is Test {
     Stipend public stipend;
 
@@ -552,6 +575,23 @@ contract StipendTest is Test {
         vm.prank(address(attacker));
         vm.expectRevert(Stipend.TransferFailed.selector);
         stipend.close(id);
+    }
+
+    function test_ReentrancyCustomError() public {
+        ExplicitReentrantAttacker attacker = new ExplicitReentrantAttacker(address(stipend));
+        vm.prank(guardian);
+        uint256 id = stipend.create{value: 1 ether}(
+            address(attacker),
+            PER_PERIOD,
+            PERIOD,
+            "pot"
+        );
+        attacker.setTarget(id);
+
+        vm.prank(address(attacker));
+        stipend.draw(id, 0.05 ether);
+
+        assertEq(attacker.capturedRevert(), abi.encodeWithSelector(Stipend.Reentrancy.selector));
     }
 
     // -------------------------------------------------------------------------

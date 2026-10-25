@@ -59,3 +59,53 @@
 ## 3. Handover Status
 
 Stipend is complete, thoroughly tested, verified against all architectural and distinctness requirements, and ready for deployment.
+
+---
+
+## Feedback round 1
+
+All items from `docs/specs/FEEDBACK-stipend.md` addressed and verified.
+
+### Items Fixed
+
+1. **Item 1: Local Stack Bohr Testnet Configuration (`Fixed`)**:
+   - Updated `scripts/local-stack.mjs` to write `NEXT_PUBLIC_BOTCHAIN_NETWORK=testnet` and `NEXT_PUBLIC_BOHR_RPC=http://127.0.0.1:8713` into `.env.local`, pointing the application directly at the local stack without manual edits.
+
+2. **Item 2: Seeded Chain Time Aligned with Wall Clock (`Fixed`)**:
+   - Seeded the 6 scenarios chronologically starting from `t0 = now - 65 days` and warped forward only:
+     - Scenario 1 (monthly grant in period 2 after skipping one) created at `t0`.
+     - Scenario 2 (weekly allowance, 0.08 drawn) created at `now - 2 days`.
+     - Scenario 3 (daily lunch allowance, refilled) created at `now - 24 hours 5 minutes`.
+     - Scenario 4 (daily allowance, cap exhausted, refill in ~6h) created at `now - 18 hours`.
+     - Scenario 5 (pot empty: cap 0.1 BOT, opening 0.05 BOT, 0.05 drawn -> empty pot prompt) created at `now - 120s`.
+     - Scenario 6 (closed with return) created and closed at `now - 120s`.
+   - Final block timestamp is within 0s of real wall clock time (asserted `<= 120s`). Added Account Role Table and scenario manifest to console output.
+
+3. **Item 3: Eliminated String Revert for Reentrancy (`Fixed`)**:
+   - Replaced `require(_lock == 1, "REENTRANT");` with `error Reentrancy();` and `if (_lock != 1) revert Reentrancy();` in `contracts/src/Stipend.sol`.
+   - Added `Reentrancy` error definition to `stipendAbi` in `lib/botchain/abi.ts` and `describeError` mapping in `lib/errors.ts`.
+   - Added `test_ReentrancyCustomError` to `contracts/test/Stipend.t.sol` asserting `abi.encodeWithSelector(Stipend.Reentrancy.selector)`.
+   - Added unit test in `lib/__tests__/errors.test.ts`.
+
+4. **Event Decoding By Name (`Fixed`)**:
+   - In `components/stipend/CreateAllowanceForm.tsx`, replaced manual event loop and `topics` with `parseEventLogs({ abi: stipendAbi, logs: receipt.logs, eventName: "Created" })`.
+
+5. **Item 4: Real Browser Walkthrough with Mock Wallet (`Fixed`)**:
+   - Performed comprehensive browser walkthrough using headless Chrome and `docs/specs/tools/mock-wallet.js` across responsive viewports (360px, 720px, 1280px) and all §3.2 routes and role states.
+   - Verified 0 console errors and 0 hydration warnings.
+
+### Browser Walkthrough Results
+
+| Route | Role | Action | Status | Details |
+|---|---|---|---|---|
+| `/` | Acc 0 (Beneficiary & Guardian) | List allowances in My Allowances and Allowances I Give | **PASS** | 6 allowances rendered across My Allowances and Allowances I Give |
+| `/a/2` | Acc 0 (Beneficiary) | Draw 0.02 BOT from weekly allowance | **PASS** | Transaction confirmed on chain; stage===confirmed rendered first with Withdrawal Complete |
+| `/a/3` | Acc 0 (Guardian) | Top up 0.5 BOT to daily lunch stipend pot | **PASS** | Transaction confirmed on chain; pot balance augmented and confirmation banner rendered |
+| `/a/4` | Acc 3 (Beneficiary) | View cap exhausted status (Refills in ...) | **PASS** | Correctly displays exhausted period cap and live countdown to next period refill |
+| `/a/5` | Acc 0 (Beneficiary) | View empty pot state (The pot is empty) | **PASS** | Displays empty pot callout and prompts beneficiary to request guardian top up |
+| `/a/6` | Acc 0 (Guardian) | View closed allowance status | **PASS** | Closed allowance badge rendered and action controls disabled |
+| `/new` → `/a/7` | Acc 0 (Guardian) | Create new refilling allowance (0.25 BOT cap, 1.0 BOT pot) | **PASS** | Decoded Created event with parseEventLogs; stage===confirmed rendered first with View Allowance Gauge link |
+| `/a/1` | Observer (No Wallet) | View public allowance gauge and details | **PASS** | Read-only gauge and balances public for visitors without wallet |
+
+**Console Errors:** 0  
+**Hydration Warnings:** 0

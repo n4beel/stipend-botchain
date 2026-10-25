@@ -14,7 +14,7 @@
  *   node scripts/local-stack.mjs
  */
 
-import { spawn } from "node:child_process";
+import { spawn, execSync } from "node:child_process";
 import { readFileSync, writeFileSync } from "node:fs";
 import {
   createPublicClient,
@@ -39,10 +39,28 @@ const local = defineChain({
   rpcUrls: { default: { http: [RPC] } },
 });
 
-console.log(`Starting anvil on port ${PORT}...`);
+try {
+  execSync(`fuser -k ${PORT}/tcp 2>/dev/null || true`);
+} catch {}
+
+const TOTAL_WARP = 65 * 86400; // 65 days
+const realNow = Math.floor(Date.now() / 1000);
+const startTimestamp = realNow - TOTAL_WARP;
+
+console.log(`Starting anvil on port ${PORT} (timestamp: ${startTimestamp})...`);
 spawn(
   "anvil",
-  ["--port", String(PORT), "--chain-id", String(CHAIN_ID), "--accounts", "10", "--silent"],
+  [
+    "--port",
+    String(PORT),
+    "--chain-id",
+    String(CHAIN_ID),
+    "--accounts",
+    "10",
+    "--timestamp",
+    String(startTimestamp),
+    "--silent",
+  ],
   {
     detached: true,
     stdio: "ignore",
@@ -71,6 +89,16 @@ async function waitNode() {
   throw new Error("Local anvil node failed to respond.");
 }
 
+async function warpTo(targetTimestamp) {
+  const currentBlock = await pub.getBlock();
+  const current = Number(currentBlock.timestamp);
+  const delta = targetTimestamp - current;
+  if (delta > 0) {
+    await pub.request({ method: "evm_increaseTime", params: [delta] });
+    await pub.request({ method: "evm_mine", params: [] });
+  }
+}
+
 async function main() {
   await waitNode();
   console.log("Anvil running.");
@@ -88,80 +116,67 @@ async function main() {
   const deployBlock = deployReceipt.blockNumber;
   console.log(`Stipend deployed at ${stipendAddress} (block ${deployBlock})`);
 
-  // Write .env.local
-  const envContent = [
-    `NEXT_PUBLIC_CONTRACT_968=${stipendAddress}`,
-    `NEXT_PUBLIC_DEPLOY_BLOCK_968=${deployBlock}`,
-    `NEXT_PUBLIC_LOCAL_RPC=${RPC}`,
-    "",
-  ].join("\n");
-  writeFileSync(".env.local", envContent);
-  console.log("Wrote .env.local with deployment configuration.");
+  console.log("\nSeeding 6 scenarios chronologically from §5...");
 
-  console.log("\nSeeding 6 scenarios from §5...");
+  // Scenario 6: account 0 beneficiary of a monthly allowance in its second period after skipping one
+  // Created at startTimestamp (65 days ago). Period = 30 days (2592000s).
+  console.log("1. Monthly allowance skipped into period 2 (Acc 0 beneficiary)...");
+  const h6 = await wallets[3].writeContract({
+    address: stipendAddress,
+    abi,
+    functionName: "create",
+    args: [accounts[0].address, parseEther("0.5"), 2592000n, "Monthly dev grant"],
+    value: parseEther("2.0"),
+  });
+  await pub.waitForTransactionReceipt({ hash: h6 });
+
+  // Warp to 2 days before realNow
+  await warpTo(realNow - 2 * 86400);
 
   // Scenario 1: account 0 is beneficiary — weekly 0.2 BOT, 0.08 drawn this week, balance 1.5
-  // Guardian is account 1
-  console.log("Seeding Scenario 1: Weekly allowance for Account 0 (0.2 cap, 0.08 drawn, 1.5 pot)");
+  console.log("2. Weekly allowance for Account 0 (0.2 cap, 0.08 drawn, 1.5 pot)...");
   const h1 = await wallets[1].writeContract({
     address: stipendAddress,
     abi,
     functionName: "create",
     args: [accounts[0].address, parseEther("0.2"), 604800n, "Weekly spending"],
-    value: parseEther("1.5"),
+    value: parseEther("1.58"),
   });
   await pub.waitForTransactionReceipt({ hash: h1 });
-  // Account 0 draws 0.08 BOT
   const h1d = await wallets[0].writeContract({
     address: stipendAddress,
     abi,
     functionName: "draw",
-    args: [1n, parseEther("0.08")],
+    args: [2n, parseEther("0.08")],
   });
   await pub.waitForTransactionReceipt({ hash: h1d });
 
+  // Warp to 24 hours 5 minutes before realNow (-86700s)
+  await warpTo(realNow - 86700);
+
   // Scenario 2: account 0 is guardian of account 1 — daily 0.05, balance 0.4, a refill has just happened
-  console.log("Seeding Scenario 2: Daily allowance given to Account 1 (0.05 cap, 0.4 pot, refilled)");
+  console.log("3. Daily allowance given to Account 1 (0.05 cap, 0.4 pot, refilled)...");
   const h2 = await wallets[0].writeContract({
     address: stipendAddress,
     abi,
     functionName: "create",
     args: [accounts[1].address, parseEther("0.05"), 86400n, "Daily lunch stipend"],
-    value: parseEther("0.4"),
+    value: parseEther("0.45"),
   });
   await pub.waitForTransactionReceipt({ hash: h2 });
-  // Account 1 draws in period 0
   const h2d = await wallets[1].writeContract({
     address: stipendAddress,
     abi,
     functionName: "draw",
-    args: [2n, parseEther("0.05")],
+    args: [3n, parseEther("0.05")],
   });
   await pub.waitForTransactionReceipt({ hash: h2d });
-  // Advance time by 86401 seconds to trigger refill into period 1
-  await pub.request({ method: "evm_increaseTime", params: [86401] });
-  await pub.request({ method: "evm_mine", params: [] });
 
-  // Scenario 3: closed with a return
-  console.log("Seeding Scenario 3: Closed allowance with returned pot balance");
-  const h3 = await wallets[0].writeContract({
-    address: stipendAddress,
-    abi,
-    functionName: "create",
-    args: [accounts[2].address, parseEther("0.1"), 86400n, "Old research stipend"],
-    value: parseEther("0.5"),
-  });
-  await pub.waitForTransactionReceipt({ hash: h3 });
-  const h3c = await wallets[0].writeContract({
-    address: stipendAddress,
-    abi,
-    functionName: "close",
-    args: [3n],
-  });
-  await pub.waitForTransactionReceipt({ hash: h3c });
+  // Warp to 18 hours before realNow
+  await warpTo(realNow - 18 * 3600);
 
   // Scenario 4: cap exhausted this period (refill in hours)
-  console.log("Seeding Scenario 4: Allowance with cap fully exhausted this period");
+  console.log("4. Allowance with cap fully exhausted this period (Acc 3 beneficiary, refill in 6h)...");
   const h4 = await wallets[0].writeContract({
     address: stipendAddress,
     abi,
@@ -178,13 +193,16 @@ async function main() {
   });
   await pub.waitForTransactionReceipt({ hash: h4d });
 
+  // Warp to 120s before realNow
+  await warpTo(realNow - 120);
+
   // Scenario 5: pot empty (0 balance remaining)
-  console.log("Seeding Scenario 5: Empty pot");
+  console.log("5. Empty pot (Acc 0 beneficiary)...");
   const h5 = await wallets[2].writeContract({
     address: stipendAddress,
     abi,
     functionName: "create",
-    args: [accounts[0].address, parseEther("0.05"), 86400n, "Empty allowance"],
+    args: [accounts[0].address, parseEther("0.1"), 86400n, "Empty allowance"],
     value: parseEther("0.05"),
   });
   await pub.waitForTransactionReceipt({ hash: h5 });
@@ -196,22 +214,67 @@ async function main() {
   });
   await pub.waitForTransactionReceipt({ hash: h5d });
 
-  // Scenario 6: account 0 beneficiary of a monthly allowance in its second period after skipping one
-  console.log("Seeding Scenario 6: Monthly allowance skipped into period 2");
-  const h6 = await wallets[3].writeContract({
+  // Scenario 3: closed with a return
+  console.log("6. Closed allowance with returned pot balance (Acc 0 guardian)...");
+  const h3 = await wallets[0].writeContract({
     address: stipendAddress,
     abi,
     functionName: "create",
-    args: [accounts[0].address, parseEther("0.5"), 2592000n, "Monthly dev grant"],
-    value: parseEther("2.0"),
+    args: [accounts[2].address, parseEther("0.1"), 86400n, "Old research stipend"],
+    value: parseEther("0.5"),
   });
-  await pub.waitForTransactionReceipt({ hash: h6 });
-  // Skip forward 2 months (2 * 2592000 = 5184000)
-  await pub.request({ method: "evm_increaseTime", params: [5184001] });
-  await pub.request({ method: "evm_mine", params: [] });
+  await pub.waitForTransactionReceipt({ hash: h3 });
+  const h3c = await wallets[0].writeContract({
+    address: stipendAddress,
+    abi,
+    functionName: "close",
+    args: [6n],
+  });
+  await pub.waitForTransactionReceipt({ hash: h3c });
 
-  console.log("\nAll 6 scenarios seeded successfully!");
-  console.log(`Ready for local development at http://localhost:3000`);
+  // Warp to realNow
+  await warpTo(realNow);
+
+  // Assert final chain timestamp within 120s of wall clock
+  const finalBlock = await pub.getBlock();
+  const currentWallTime = Math.floor(Date.now() / 1000);
+  const diff = Math.abs(Number(finalBlock.timestamp) - currentWallTime);
+  console.log(`\nFinal chain timestamp: ${finalBlock.timestamp} (real: ${currentWallTime}, diff: ${diff}s)`);
+  if (diff > 120) {
+    throw new Error(`Chain timestamp skewed by ${diff}s, expected <= 120s`);
+  }
+
+  // Write .env.local
+  const envContent = [
+    `NEXT_PUBLIC_BOTCHAIN_NETWORK=testnet`,
+    `NEXT_PUBLIC_BOHR_RPC=${RPC}`,
+    `NEXT_PUBLIC_CONTRACT_968=${stipendAddress}`,
+    `NEXT_PUBLIC_DEPLOY_BLOCK_968=${deployBlock}`,
+    `NEXT_PUBLIC_CHAIN_ID=968`,
+    `NEXT_PUBLIC_RPC_URL=${RPC}`,
+  ].join("\n");
+  writeFileSync(".env.local", envContent + "\n");
+  console.log("Updated .env.local with deployed contract addresses.");
+
+  console.log("\n========================================================");
+  console.log(`Stipend Local Stack Running on ${RPC}`);
+  console.log("========================================================");
+  console.log("Account Role Table:");
+  console.log("--------------------------------------------------------");
+  console.log(`Acc 0: ${accounts[0].address} (Beneficiary of #1, #2, #5; Guardian of #3, #4, #6)`);
+  console.log(`Acc 1: ${accounts[1].address} (Guardian of #2; Beneficiary of #3)`);
+  console.log(`Acc 2: ${accounts[2].address} (Guardian of #5; Beneficiary of #6)`);
+  console.log(`Acc 3: ${accounts[3].address} (Guardian of #1; Beneficiary of #4)`);
+  console.log("--------------------------------------------------------");
+  console.log("Seeded scenarios:");
+  console.log("1. Acc 0 beneficiary: monthly allowance in period 2 after skipping one (2.0 pot)");
+  console.log("2. Acc 0 beneficiary: weekly allowance (0.2 cap, 0.08 drawn, 1.5 pot)");
+  console.log("3. Acc 0 guardian: daily allowance to Acc 1 (0.05 cap, 0.4 pot, refilled)");
+  console.log("4. Acc 0 guardian: daily allowance to Acc 3 (0.15 cap, exhausted, refills in ~6h)");
+  console.log("5. Acc 0 beneficiary: empty pot (0 balance)");
+  console.log("6. Acc 0 guardian: closed allowance (returned 0.5 BOT)");
+  console.log("--------------------------------------------------------");
+  console.log("Local stack ready!");
 }
 
 main().catch((err) => {

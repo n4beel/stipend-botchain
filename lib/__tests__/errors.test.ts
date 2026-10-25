@@ -89,6 +89,16 @@ describe("describeError mapping", () => {
     expect(describeError(err)).toBe("Set an amount above zero.");
   });
 
+  it("handles Reentrancy error", () => {
+    const err = {
+      data: {
+        errorName: "Reentrancy",
+        args: [],
+      },
+    };
+    expect(describeError(err)).toBe("Reentrant call detected.");
+  });
+
   it("handles user rejected error gracefully", () => {
     const err = new Error("User rejected the request.");
     expect(describeError(err)).toBe("Transaction was cancelled in wallet.");

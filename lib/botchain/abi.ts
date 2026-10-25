@@ -607,6 +607,11 @@ export const stipendAbi = [
         "internalType": "uint256"
       }
     ]
+  },
+  {
+    "type": "error",
+    "name": "Reentrancy",
+    "inputs": []
   }
 ] as const;
 
