@@ -109,3 +109,16 @@ All items from `docs/specs/FEEDBACK-stipend.md` addressed and verified.
 
 **Console Errors:** 0  
 **Hydration Warnings:** 0
+
+## Feedback round 2
+
+1. **Local-stack autonomous mining (`--block-time 1`):**
+   - Configured `anvil` in `scripts/local-stack.mjs` with `--block-time 1` to produce blocks autonomously on a 1-second cadence.
+   - Seeded states across all 6 scenarios (weekly allowance with partial draw, daily allowance refilled, closed allowance, exhausted allowance, empty pot, monthly allowance in period 2 after skipping one) verified.
+   - Final chain timestamp matches wall clock (`diff: 0s`, within 120s limit).
+   - Confirmed autonomous block progression without manual mining:
+     ```bash
+     b1=$(cast block-number --rpc-url http://127.0.0.1:8713); sleep 3; b2=$(cast block-number --rpc-url http://127.0.0.1:8713); echo "$b1 -> $b2"
+     # Output: 59 -> 62
+     ```
+

@@ -59,6 +59,8 @@ spawn(
     "10",
     "--timestamp",
     String(startTimestamp),
+    "--block-time",
+    "1",
     "--silent",
   ],
   {
@@ -232,8 +234,8 @@ async function main() {
   });
   await pub.waitForTransactionReceipt({ hash: h3c });
 
-  // Warp to realNow
-  await warpTo(realNow);
+  // Warp to current wall clock time
+  await warpTo(Math.floor(Date.now() / 1000));
 
   // Assert final chain timestamp within 120s of wall clock
   const finalBlock = await pub.getBlock();
@@ -275,6 +277,7 @@ async function main() {
   console.log("6. Acc 0 guardian: closed allowance (returned 0.5 BOT)");
   console.log("--------------------------------------------------------");
   console.log("Local stack ready!");
+  process.exit(0);
 }
 
 main().catch((err) => {
