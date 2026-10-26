@@ -1,5 +1,4 @@
-import { activeBotChain, addressUrl } from "@/lib/botchain/chain";
-import { getDeployment, isDeployed } from "@/lib/botchain/deployment";
+import { activeBotChain, footerLinks } from "@/lib/botchain/chain";
 
 /**
  * The footer's "Built on BOT Chain", linked to this app's own contract on the explorer.
@@ -18,9 +17,9 @@ export default function BuiltOnBotChain({
   style?: React.CSSProperties;
   label?: string;
 }) {
-  const chainId = activeBotChain.id;
+  const { contract } = footerLinks(activeBotChain.id);
 
-  if (!isDeployed(chainId)) {
+  if (!contract) {
     return (
       <span className={className} style={style}>
         {label}
@@ -30,7 +29,7 @@ export default function BuiltOnBotChain({
 
   return (
     <a
-      href={addressUrl(chainId, getDeployment(chainId).address)}
+      href={contract}
       target="_blank"
       rel="noreferrer"
       className={className}

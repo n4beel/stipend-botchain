@@ -107,3 +107,27 @@ export function addressUrl(chainId: number, address: string): string {
 export function faucetUrl(chainId: number): string | null {
   return chainId === bohrTestnet.id ? "https://faucet.botchain.ai/basic" : null;
 }
+
+export const BOTCHAIN_SITE_URL = "https://botchain.ai";
+export const BOTCHAIN_EXPLORER_URL = "https://scan.botchain.ai";
+
+import { isDeployed, getDeployment } from "./deployment";
+
+export type FooterLinks = {
+  contract: string | null;
+  site: string;
+  explorer: string;
+};
+
+export function footerLinks(chainId: number = activeBotChain.id): FooterLinks {
+  const deployed = isBotChainId(chainId) && isDeployed(chainId);
+  const contract = deployed
+    ? addressUrl(chainId, getDeployment(chainId).address)
+    : null;
+  return {
+    contract,
+    site: BOTCHAIN_SITE_URL,
+    explorer: BOTCHAIN_EXPLORER_URL,
+  };
+}
+

@@ -1,5 +1,5 @@
 import type { Address } from "viem";
-import { botChain, bohrTestnet, type BotChainId } from "./chain";
+import type { BotChainId } from "./chain";
 
 /**
  * Where this project's contract lives, keyed by chain ID.
@@ -31,11 +31,11 @@ export const ZERO_ADDRESS = "0x0000000000000000000000000000000000000000" as cons
  * these into a loop.
  */
 export const DEPLOYMENTS: Record<BotChainId, Deployment> = {
-  [botChain.id]: {
+  677: {
     address: (process.env.NEXT_PUBLIC_CONTRACT_677 as Address) ?? ZERO_ADDRESS,
     deployBlock: BigInt(process.env.NEXT_PUBLIC_DEPLOY_BLOCK_677 ?? "0"),
   },
-  [bohrTestnet.id]: {
+  968: {
     address: (process.env.NEXT_PUBLIC_CONTRACT_968 as Address) ?? ZERO_ADDRESS,
     deployBlock: BigInt(process.env.NEXT_PUBLIC_DEPLOY_BLOCK_968 ?? "0"),
   },
@@ -55,3 +55,6 @@ export function isDeployed(chainId: BotChainId): boolean {
   const d = DEPLOYMENTS[chainId];
   return d.address !== ZERO_ADDRESS && d.deployBlock > 0n;
 }
+
+export { footerLinks, type FooterLinks } from "./chain";
+

@@ -6,6 +6,7 @@ import ConnectButton from "@/components/ui/ConnectButton";
 import NetworkBadge from "@/components/botchain/NetworkBadge";
 import BuiltOnBotChain from "@/components/botchain/BuiltOnBotChain";
 import { app } from "@/lib/app-config";
+import { footerLinks } from "@/lib/botchain/chain";
 
 export interface NavRoute {
   path: string;
@@ -37,6 +38,7 @@ export default function PageShell({
   description,
 }: PageShellProps) {
   const currentPath = usePathname();
+  const { site, explorer } = footerLinks();
 
   return (
     <div className="gauge-canvas flex min-h-screen flex-col text-[#F6E9FA]">
@@ -120,7 +122,27 @@ export default function PageShell({
               The guardian can close a stipend at any moment. Unused allowance does not roll over.
             </span>
           </div>
-          <BuiltOnBotChain />
+          <div className="flex flex-wrap items-center justify-center gap-3 text-xs">
+            <BuiltOnBotChain className="hover:underline" />
+            <span className="text-[#62306F]" aria-hidden="true">•</span>
+            <a
+              href={site}
+              target="_blank"
+              rel="noreferrer"
+              className="hover:underline hover:text-[#7DF0C0]"
+            >
+              botchain.ai
+            </a>
+            <span className="text-[#62306F]" aria-hidden="true">•</span>
+            <a
+              href={explorer}
+              target="_blank"
+              rel="noreferrer"
+              className="hover:underline hover:text-[#7DF0C0]"
+            >
+              Explorer
+            </a>
+          </div>
         </div>
       </footer>
     </div>
