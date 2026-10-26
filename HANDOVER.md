@@ -139,3 +139,18 @@ All items from `docs/specs/FEEDBACK-stipend.md` addressed and verified.
      - `/a/1` (Allowance Detail): 200 OK — contains contract link, `https://botchain.ai`, and `https://scan.botchain.ai`.
      - `/nonexistent` (Not Found 404): 404 Not Found — contains contract link, `https://botchain.ai`, and `https://scan.botchain.ai`.
 
+## Feedback round 4
+
+- **Shared CSS Tokens & Wallet Dropdown Grounding (Item 1):**
+  - Defined all missing tokens in `app/globals.css`:
+    - `--bg-elevated: #280C30` (dark plum elevated ground for wallet dropdowns and popovers)
+    - `--border-default: #6D2A82` (plum boundary border)
+    - `--text-secondary: #EEDBF2` (soft lavender text on elevated surface, >12:1 contrast)
+    - `--text-tertiary: #C29DCB` (muted lavender text, >6.5:1 contrast)
+    - `--success: #7DF0C0` (Stipend mint, >13:1 contrast)
+    - `--danger: #FF5E7E` (coral rose danger, >5.8:1 contrast)
+    - `--warning: #FFC86B` (warm gold warning, >12:1 contrast)
+  - All token contrast ratios exceed 4.5:1 WCAG AA.
+  - Added unit test `test/lint/tokens.test.ts` verifying all `var(--x)` without fallback in `app/` and `components/` are defined in `globals.css` or next/font.
+  - Confirmed `python3 scripts/check-tokens.py stipend` exits 0 with 0 undefined tokens.
+
